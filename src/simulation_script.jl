@@ -1,52 +1,65 @@
 using DataStructures
 import Base: isless
 
-#what objects do we need?
-#state & event abstract types
-abstract type State end 
-abstract type Event end 
+# State and Event abstract (superclass) types
+abstract type Event end
+abstract type State end
 
-#timed event (event and time it takes place)
+#Captures an event and the time it takes place
 struct TimedEvent
     event::Event
     time::Float64
 end
 
-#queue state (number of people in the queue)
-mutable struct QueueState <: State 
-    number_in_queue::Int #the number of jobs in a queue 
+#Comparison of two timed events - this will allow us to use them in a heap/priority-queue
+isless(te1::TimedEvent, te2::TimedEvent) = te1.time < te2.time
+
+#This is an abstract function 
+"""
+It will generally be called as 
+       new_timed_events = process_event(time, state, event)
+It will generate 0 or more new timed events based on the current event
+"""
+function process_event end
+
+#Generic events that we can always use
+struct EndSimEvent <: Event end #Event that ends the simulation
+struct LogStateEvent <: Event end #Record when an event happens
+
+function process_event(time::Float64, state::State, es_event::EndSimEvent)
+    println("Ending simulation at time $time.")
+    return []
+end
+
+function process_event(time::Float64, state::State, ls_event::LogStateEvent)
+    println("Logging state at time $time.")
+    println(state)
+    return []
+end
+
+struct QueueNetworkParameters
+    num_queues::Int # The number of queues in our system 
+    α::Vector{Any} # External arrival rates (αᵢ's) for queues as an ordered vector
+    μ::Vector{Any} # Service rates (μᵢ's) as an ordered vector
+    scv_arr::Vector{Any} # Squared coefficient of variation of the service processes
+end
+
+mutable struct QueueNetworkState <: State 
+    jobs_num::Vector{Int} # Number of jobs in each queue, ordered. 
+    params::QueueNetworkParameterse # Parameters of queue network system
 end 
 
-struct ArrivalEvent <: Event end
-struct EndOfServiceEvent <: Event end
+#Total number of jobs in the system (necessary???)
+total_in_system(state::TandemQueueNetworkState) = sum(state.queues)
 
-#system state 
-mutable struct SystemState <: State 
-    number_queues::Int #the number of queues in the system 
-    number_in_system::Int #the number of jobs in the system 
-end  
+#next_arrivival_duration RV for next arrival to the system externally 
+#next_service_duration RV for next service of the system 
 
-# Process an arrival event
-function process_event(time::Float64, state::State, ::ArrivalEvent)
-    # Increase number in system
-    state.number_in_system += 1
-    new_timed_events = TimedEvent[]
-
-    # Prepare next arrival
-    push!(new_timed_events,TimedEvent(ArrivalEvent(),time + rand(Exponential(1/λ))))
-
-    # If this is the only job on the server
-    state.number_in_system == 1 && push!(new_timed_events,TimedEvent(EndOfServiceEvent(), time + 1/μ))
-    return new_timed_events
-end
-
-# Process an end of service event 
-function process_event(time::Float64, state::State, ::EndOfServiceEvent)
-    # Release a customer from the system
-    state.number_in_system -= 1 
-    @assert state.number_in_system ≥ 0
-    return state.number_in_system ≥ 1 ? [TimedEvent(EndOfServiceEvent(), time + 1/μ)] : TimedEvent[]
-end
+#PROCESSING EVENTS 
+#process arrival event (external to system)
+#process end of service event 
+#process a breakdown of a server 
+    
 
 """
 The main simulation function gets an initial state and an initial event
