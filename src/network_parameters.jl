@@ -1,15 +1,7 @@
-#You need to install the Parameters.jl package: https://github.com/mauro3/Parameters.jl
-#You need to install the Accessors.jl package: https://github.com/JuliaObjects/Accessors.jl
 using Parameters  
 using Accessors 
 using LinearAlgebra
 using Random 
-
-##################################
-##################################
-# EXAMPLE SCENARIOS 
-##################################
-##################################
 
 @with_kw struct NetworkParameters #The @with_kw macro comes from the Parameters.jl package and makes nice constructors
     L::Int
@@ -22,7 +14,13 @@ using Random
 end
 
 # Returns the effective service rate vector Rμ (taking breakdowns into consideration)
-service_capacity(net::NetworkParameters) = (net.γ₂/(net.γ₁ + net.γ₂)) * net.μ_vector
+service_capacity(net::NetworkParameters) = (net.γ₂/(net.γ₁ + net.γ₂)) * net.μ_vectorv
+
+##################################
+##################################
+# EXAMPLE SCENARIOS 
+##################################
+##################################
 
 ############################
 # Three queues in tandem
