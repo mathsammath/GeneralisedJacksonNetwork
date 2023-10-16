@@ -1,3 +1,5 @@
+include("simulation_script.jl")
+
 """
 The main simulation function gets an initial state and an initial event
 that gets things going. Optional arguments are the maximal time for the
@@ -10,7 +12,7 @@ function simulate(init_state::State, init_timed_event::TimedEvent
                     callback = (time, state) -> nothing)
 
     ### Global for repair states 
-    global breakdown_states = [i for i in 1:num_queues]
+    global breakdown_states = [false for i in 1:num_queues]
 
     # The event queue
     priority_queue = BinaryMinHeap{TimedEvent}()
@@ -55,6 +57,8 @@ function simulate(init_state::State, init_timed_event::TimedEvent
     end
 end;
 
+#=
+
 """
 Runs a discrete event simulation of an Open Generalized Jackson Network with Breakdowns and Repairs `net`. 
 
@@ -79,3 +83,4 @@ function sim_net(net::NetworkParameters; max_time = 10^6, warm_up_time = 10^4, s
 
     return estimated_total_mean_queue_length
 end;
+=#

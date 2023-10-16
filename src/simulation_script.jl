@@ -1,4 +1,4 @@
-using DataStructures, Random, Distributions
+using DataStructures, Random, Distributions, StatsBase
 import Base: isless
 
 # State and Event abstract (superclass) types
@@ -51,15 +51,17 @@ end
 
 struct QueueNetworkParameters
     num_queues::Int # The number of queues in our system 
+    trans_probs::Matrix{Float64} # Transition probability matrix 
     α_rates::Vector{Any} # External arrival rates (αᵢ's) for queues as an ordered vector
     μ_rates::Vector{Any} # Service rates (μᵢ's) as an ordered vector
-    γ_rates::Vector{Any} # On and off paramters 
+    γ_on_rates::Vector{Any} # On paramters for servers (breakdown times)
+    γ_off_rates::Vector{Any} # Off parameters for servers (repair times)
     scv_arr::Vector{Any} # Squared coefficient of variation of the service processes
 end
 
 mutable struct QueueNetworkState <: State 
     jobs_num::Vector{Int} # Number of jobs in each queue, ordered. 
-    params::QueueNetworkParameterse # Parameters of queue network system
+    params::QueueNetworkParameters # Parameters of queue network system
 end 
 
 ###################################################
@@ -80,7 +82,12 @@ next_service_duration(s::State, q::Int) = rand(rate_scv_gamma(s.params.μ_rates[
 #next_breakdown_duration RV for next breakdown of queue in system 
 # Specifically the server changes between on and off and back as follows: 
 # on durations are exponentially distributed with mean γ₁^{-1} where γ₁>0
-next_breakdown_duration(s::State, q::Int) = rand(Exponential(1/s.params.γ_rates[q]))
+next_breakdown_duration(s::State, q::Int) = rand(Exponential(1/s.params.γ_on_rates[q]))
+
+#next_repair_duration RV for when servers are broken down.
+#off durations are exponentially distributed with mean γ₁² where γ₂>0
+next_repair_duration(s::State, q::Int) = rand(Exponential(1/s.params.γ_off_rates[q]))
+
 
 ###############################
 ###############################
@@ -112,38 +119,65 @@ function process_event(time::Float64, state::State, arrival_event::ExternalArriv
     ### prepare next arrival 
     push!(new_timed_events, TimedEvent(ExternalArrivalEvent(arrival_event.q), 
                                         time + next_arrival_duration(state, arrival_event.q)))
-    ### something specific -> engage server if first job? 
     ### if no one else in queue, start new service event 
-    
+    state.jobs_num[arrival_event.q] == 1 && push!(new_timed_events, 
+                                        TimedEvent(EndOfServiceAtQueueEvent(arrival_event.q), 
+                                            time + next_service_duration(state, arrival_event.q)))
     ### return events 
     return new_timed_events
 end
 
 #process end of service event 
 function process_event(time::Float64, state::State, eos_event::EndOfServiceAtQueueEvent)
-    ### check if queue is broken down 
-    ### access queue where service has occured 
-    ### record a new timed event 
-    ### remove the job from the queue
-    ### if another customer in queue, then start new service 
-    ### transition matrix to work out which queue (or exit) job will go 
-    ### add job to new queue 
-    ###     if queue has no jobs, start service event (record new timed event)
-    ###     else add to end of queue (record new timed event)
+    q = eos_event.q
+    ### check if queue is broken down
+    if breakdown_states[q] == false 
+        ### remove the job from the queue
+        state.jobs_num[q] -= 1
+        @assert state.jobs_num[q] ≥ 0
+        ### record a new timed event 
+        new_timed_events = TimedEvent[]
+        ### if another customer in queue, then start new service 
+        if state.jobs_num[q] ≥ 1
+            st = next_service_duration(state, q)
+            push!(new_timed_events, TimedEvent(EndOfServiceAtQueueEvent(q), time + st)) 
+        end
+        ### transition matrix to work out which queue (or exit) job will go 
+        # row of probabilities from transition matrix with probability of exiting system as additional probability
+        trans_row = push!(state.params.trans_probs[q, :], 1 - sum(state.params.trans_probs[q, :]))
+        trans_q = sample(1:state.params.num_queues+1, Weights(trans_row)) #sample random probability from row
+        ### if next q is in system, add job to new queue
+        if trans_q ≤ state.params.num_queues+1
+            state.jobs_num[trans_q] += 1
+            ### if queue has no jobs, start service event (record new timed event)
+            if state.jobs_num[trans_q] == 1
+                push!(new_timed_events, TimedEvent(EndOfServiceAtQueueEvent(trans_q), time + next_service_duration(state, trans_q))) 
+            end
+        end 
+        return new_timed_events
+    end 
+    # should we be returning something if server is broken down?
 end 
 
 #process a breakdown of a server 
 function process_event(time::Float64, state::State, brk_event::BreakdownEvent)
+    q = brk_event.q
+    @assert breakdown_states[q] == false
     ### access global variable and make false 
+    breakdown_states[q] = true 
     ### access queue where breakdown has occured 
-    ### record a new timed event 
+    ### record a new timed event (REPAIR EVENT AFTER BROKEN DOWN)
+    return TimedEvent(RepairEvent(q), time + next_repair_duration(state, q))
 end
 
 #process a repair of a server 
 function process_event(time::Float64, state::State, rpr_event::RepairEvent)
-    ### assert global boolean at queue is false 
+    q = rpr_event.q
+    @assert breakdown_states[q] == true  
+    ### repair broken down server 
+    breakdown_states[q] = false 
     ### record new timed event 
-    ### make boolean at queue true 
+    return TimedEvent(BreakdownEvent(q), time + next_breakdown_duration(state, q))
 end 
 
 
@@ -160,4 +194,4 @@ rate_scv_gamma(desired_rate::Float64, desired_scv::Float64) = Gamma(1/desired_sc
 """
 Compute the number of queues in the system 
 """
-total_in_system(state::TandemQueueNetworkState) = sum(state.queues)
+total_in_system(state::QueueNetworkState) = sum(state.queues)
