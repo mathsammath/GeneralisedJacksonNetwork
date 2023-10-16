@@ -1,3 +1,5 @@
+include("network_parameters.jl")
+
 using DataStructures, Random, Distributions, StatsBase
 import Base: isless
 
@@ -27,9 +29,7 @@ struct EndSimEvent <: Event end # Event that ends the simulation
 
 struct LogStateEvent <: Event end # Record when an event happens
 
-mutable struct ExternalArrivalEvent <: Event 
-    q::Int # The index of the queue where job goes
-end 
+mutable struct ExternalArrivalEvent <: Event end 
  
 struct EndOfServiceAtQueueEvent <: Event
     q::Int # The index of the queue where service finished
@@ -48,20 +48,10 @@ end
 # Network Parameters & State 
 ###############################
 ###############################
-
-struct QueueNetworkParameters
-    num_queues::Int # The number of queues in our system 
-    trans_probs::Matrix{Float64} # Transition probability matrix 
-    α_rates::Vector{Any} # External arrival rates (αᵢ's) for queues as an ordered vector
-    μ_rates::Vector{Any} # Service rates (μᵢ's) as an ordered vector
-    γ_on_rates::Vector{Any} # On paramters for servers (breakdown times)
-    γ_off_rates::Vector{Any} # Off parameters for servers (repair times)
-    scv_arr::Vector{Any} # Squared coefficient of variation of the service processes
-end
-
+ 
 mutable struct QueueNetworkState <: State 
     jobs_num::Vector{Int} # Number of jobs in each queue, ordered. 
-    params::QueueNetworkParameters # Parameters of queue network system
+    params::NetworkParameters # Parameters of queue network system
 end 
 
 ###################################################
@@ -73,20 +63,20 @@ end
 
 # next_arrivival_duration RV for next arrival to the system externally 
 # In this project we'll consider the durations of times between external arrivals to be exponentially distributed
-next_arrival_duration(s::State, q::Int) = rand(Exponential(1/s.params.α_rates[q]))
+next_arrival_duration(s::State, q::Int) = rand(Exponential(1/s.params.α_vector[q]))
 
 # next_service_duration RV for next service of the system 
 # As for the durations of service times we will set them as gamma distributed with a ratio of the variance and the mean squared 
-next_service_duration(s::State, q::Int) = rand(rate_scv_gamma(s.params.μ_rates[q], s.params.scv_arr[q]))
+next_service_duration(s::State, q::Int) = rand(rate_scv_gamma(s.params.μ_vector[q], c_s))
 
 #next_breakdown_duration RV for next breakdown of queue in system 
 # Specifically the server changes between on and off and back as follows: 
 # on durations are exponentially distributed with mean γ₁^{-1} where γ₁>0
-next_breakdown_duration(s::State, q::Int) = rand(Exponential(1/s.params.γ_on_rates[q]))
+next_breakdown_duration(s::State, q::Int) = rand(Exponential(1/s.params.γ₁[q]))
 
 #next_repair_duration RV for when servers are broken down.
 #off durations are exponentially distributed with mean γ₁² where γ₂>0
-next_repair_duration(s::State, q::Int) = rand(Exponential(1/s.params.γ_off_rates[q]))
+next_repair_duration(s::State, q::Int) = rand(Exponential(1/s.params.γ₂[q]))
 
 
 ###############################
@@ -111,20 +101,22 @@ end
 #process arrival event (external to system)
 function process_event(time::Float64, state::State, arrival_event::ExternalArrivalEvent)
     ### determine what queue job goes to 
-    arrival_event.q = rand(1:state.params.num_queues)
+    q = rand(1:state.params.L)
     ### add person to queue 
-    state.jobs_num[arrival_event.q] += 1
+    state.jobs_num[q] += 1
     ### record a new timed event 
     new_timed_events = TimedEvent[]
     ### prepare next arrival 
-    push!(new_timed_events, TimedEvent(ExternalArrivalEvent(arrival_event.q), 
-                                        time + next_arrival_duration(state, arrival_event.q)))
+    push!(new_timed_events, TimedEvent(ExternalArrivalEvent(), 
+                                        time + next_arrival_duration(state, q)))
     ### if no one else in queue, start new service event 
-    state.jobs_num[arrival_event.q] == 1 && push!(new_timed_events, 
-                                        TimedEvent(EndOfServiceAtQueueEvent(arrival_event.q), 
-                                            time + next_service_duration(state, arrival_event.q)))
+    state.jobs_num[q] == 1 && push!(new_timed_events, 
+                                        TimedEvent(EndOfServiceAtQueueEvent(q), 
+                                            time + next_service_duration(state, q)))
     ### return events 
     return new_timed_events
+    # few problems here. are we actually doing this properly. randomly have an arrival event, but randomly put them in a queue.
+    # perhaps always need to initialise with L arrival events to get started. 
 end
 
 #process end of service event 
@@ -144,10 +136,10 @@ function process_event(time::Float64, state::State, eos_event::EndOfServiceAtQue
         end
         ### transition matrix to work out which queue (or exit) job will go 
         # row of probabilities from transition matrix with probability of exiting system as additional probability
-        trans_row = push!(state.params.trans_probs[q, :], 1 - sum(state.params.trans_probs[q, :]))
-        trans_q = sample(1:state.params.num_queues+1, Weights(trans_row)) #sample random probability from row
+        trans_row = push!(state.params.P[q, :], 1 - sum(state.params.P[q, :]))
+        trans_q = sample(1:state.params.L+1, Weights(trans_row)) #sample random probability from row
         ### if next q is in system, add job to new queue
-        if trans_q ≤ state.params.num_queues+1
+        if trans_q ≤ state.params.L+1
             state.jobs_num[trans_q] += 1
             ### if queue has no jobs, start service event (record new timed event)
             if state.jobs_num[trans_q] == 1
