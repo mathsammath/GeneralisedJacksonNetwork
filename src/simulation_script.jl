@@ -28,7 +28,7 @@ struct EndSimEvent <: Event end # Event that ends the simulation
 struct LogStateEvent <: Event end # Record when an event happens
 
 struct ExternalArrivalEvent <: Event 
-    q::Int # The index of the queue where job goes
+    q::Int # The index of the queue new job will go
 end 
  
 struct EndOfServiceAtQueueEvent <: Event
@@ -38,6 +38,11 @@ end
 struct BreakdownEvent <: Event 
     q::Int # The index of the queue where breakdown has occured 
 end
+
+struct RepairEvent <: Event 
+    q::Int # The index of the queue where repair is occuring 
+end 
+
 ###############################
 ###############################
 # Network Parameters & State 
@@ -107,11 +112,11 @@ end
 
 #process end of service event 
 function process_event(time::Float64, state::State, eos_event::EndOfServiceAtQueueEvent)
+    ### check if queue is broken down 
     ### access queue where service has occured 
     ### record a new timed event 
     ### remove the job from the queue
     ### if another customer in queue, then start new service 
-    
     ### transition matrix to work out which queue (or exit) job will go 
     ### add job to new queue 
     ###     if queue has no jobs, start service event (record new timed event)
@@ -120,11 +125,17 @@ end
 
 #process a breakdown of a server 
 function process_event(time::Float64, state::State, brk_event::BreakdownEvent)
+    ### access global variable and make false 
     ### access queue where breakdown has occured 
     ### record a new timed event 
-    ### within queue where breakdown has occured, pause serving ????
-    ### record time for server to come back online???
 end
+
+#process a repair of a server 
+function process_event(time::Float64, state::State, rpr_event::RepairEvent)
+    ### assert global boolean at queue is false 
+    ### record new timed event 
+    ### make boolean at queue true 
+end 
 
 
 #######################################

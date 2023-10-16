@@ -9,6 +9,8 @@ function simulate(init_state::State, init_timed_event::TimedEvent
                     log_times::Vector{Float64} = Float64[],
                     callback = (time, state) -> nothing)
 
+    ### Global for repair states 
+    global breakdown_states = [i for i in 1:num_queues]
 
     # The event queue
     priority_queue = BinaryMinHeap{TimedEvent}()
