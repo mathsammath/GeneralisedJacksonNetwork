@@ -4,7 +4,7 @@ The main simulation function gets an initial state and an initial event
 that gets things going. Optional arguments are the maximal time for the
 simulation, times for logging events, and a call-back function.
 """
-function simulate(init_state::State, init_timed_event::TimedEvent
+function simulate(init_state::State, init_timed_event::Vector{TimedEvent}
                     ; 
                     max_time::Float64 = 100.0, 
                     log_times::Vector{Float64} = Float64[],
@@ -17,7 +17,9 @@ function simulate(init_state::State, init_timed_event::TimedEvent
     priority_queue = BinaryMinHeap{TimedEvent}()
 
     # Put the standard events in the queue
-    push!(priority_queue, init_timed_event)
+    for event in init_timed_event
+        push!(priority_queue, event)
+    end
     push!(priority_queue, TimedEvent(EndSimEvent(), max_time))
     for log_time in log_times
         push!(priority_queue, TimedEvent(LogStateEvent(), log_time))
@@ -40,6 +42,10 @@ function simulate(init_state::State, init_timed_event::TimedEvent
 
         # Act on the event
         new_timed_events = process_event(time, state, timed_event.event) 
+
+        if timed_event.event isa ExternalArrivalEvent
+            println("BIGGEST")
+        end
 
         # If the event was an end of simulation then stop
         if timed_event.event isa EndSimEvent

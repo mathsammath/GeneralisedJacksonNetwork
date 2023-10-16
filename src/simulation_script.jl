@@ -30,6 +30,10 @@ struct EndSimEvent <: Event end # Event that ends the simulation
 struct LogStateEvent <: Event end # Record when an event happens
 
 mutable struct ExternalArrivalEvent <: Event end 
+
+struct ExternalArrivalEventInitial <: Event 
+    q::Int # Queue initial job is assigned to 
+end
  
 struct EndOfServiceAtQueueEvent <: Event
     q::Int # The index of the queue where service finished
@@ -67,7 +71,7 @@ next_arrival_duration(s::State, q::Int) = rand(Exponential(1/s.params.α_vector[
 
 # next_service_duration RV for next service of the system 
 # As for the durations of service times we will set them as gamma distributed with a ratio of the variance and the mean squared 
-next_service_duration(s::State, q::Int) = rand(rate_scv_gamma(s.params.μ_vector[q], c_s))
+next_service_duration(s::State, q::Int) = rand(rate_scv_gamma(s.params.μ_vector[q], s.params.c_s))
 
 #next_breakdown_duration RV for next breakdown of queue in system 
 # Specifically the server changes between on and off and back as follows: 
@@ -170,6 +174,26 @@ function process_event(time::Float64, state::State, rpr_event::RepairEvent)
     breakdown_states[q] = false 
     ### record new timed event 
     return TimedEvent(BreakdownEvent(q), time + next_breakdown_duration(state, q))
+end 
+
+"""
+Initial queue assignments for jobs to ensure simulation starts correctly.
+"""
+function process_event(time::Float64, state::State, ext_event::ExternalArrivalEventInitial)
+    ### determine what queue job goes to 
+    q = ext_event.q
+    ### add person to queue 
+    state.jobs_num[q] += 1
+    ### record a new timed event 
+    new_timed_events = TimedEvent[]
+    ### prepare next arrival 
+    push!(new_timed_events, TimedEvent(ExternalArrivalEvent(), 
+                                        time + next_arrival_duration(state, q)))
+    ### if no one else in queue, start new service event 
+    push!(new_timed_events, TimedEvent(EndOfServiceAtQueueEvent(q), 
+                                            time + next_service_duration(state, q)))
+    ### return events 
+    return new_timed_events
 end 
 
 
