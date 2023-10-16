@@ -27,8 +27,8 @@ struct EndSimEvent <: Event end # Event that ends the simulation
 
 struct LogStateEvent <: Event end # Record when an event happens
 
-struct ExternalArrivalEvent <: Event 
-    q::Int # The index of the queue new job will go
+mutable struct ExternalArrivalEvent <: Event 
+    q::Int # The index of the queue where job goes
 end 
  
 struct EndOfServiceAtQueueEvent <: Event
@@ -103,11 +103,20 @@ end
 
 #process arrival event (external to system)
 function process_event(time::Float64, state::State, arrival_event::ExternalArrivalEvent)
-    ### access trans matrix to work out which queue we add to 
+    ### determine what queue job goes to 
+    arrival_event.q = rand(1:state.params.num_queues)
     ### add person to queue 
+    state.jobs_num[arrival_event.q] += 1
     ### record a new timed event 
+    new_timed_events = TimedEvent[]
     ### prepare next arrival 
+    push!(new_timed_events, TimedEvent(ExternalArrivalEvent(arrival_event.q), 
+                                        time + next_arrival_duration(state, arrival_event.q)))
     ### something specific -> engage server if first job? 
+    ### if no one else in queue, start new service event 
+    
+    ### return events 
+    return new_timed_events
 end
 
 #process end of service event 
@@ -148,5 +157,7 @@ A convenience function to make a Gamma distribution with desired rate (inverse o
 """
 rate_scv_gamma(desired_rate::Float64, desired_scv::Float64) = Gamma(1/desired_scv, desired_scv/desired_rate)
 
-# Total number of jobs in the system (necessary???)
+"""
+Compute the number of queues in the system 
+"""
 total_in_system(state::TandemQueueNetworkState) = sum(state.queues)
