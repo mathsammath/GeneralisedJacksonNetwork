@@ -143,7 +143,7 @@ function process_event(time::Float64, state::State, eos_event::EndOfServiceAtQue
         trans_row = push!(state.params.P[q, :], 1 - sum(state.params.P[q, :]))
         trans_q = sample(1:state.params.L+1, Weights(trans_row)) #sample random probability from row
         ### if next q is in system, add job to new queue
-        if trans_q ≤ state.params.L+1
+        if trans_q < state.params.L+1
             state.jobs_num[trans_q] += 1
             ### if queue has no jobs, start service event (record new timed event)
             if state.jobs_num[trans_q] == 1
