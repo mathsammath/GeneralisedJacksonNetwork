@@ -86,8 +86,7 @@ function sim_net(net::NetworkParameters; max_time = Float64(10^6), warm_up_time 
 
             if timed_event.time > warm_up_time # Only record data past warm up time
                 # If event occurs where a queue length is changed then record it
-                if timed_event.event isa EndOfServiceAtQueueEvent || timed_event.event isa ExternalArrivalEvent || 
-                                                                            timed_event.event isa ExternalArrivalEvent
+                if timed_event.event isa EndOfServiceAtQueueEvent || timed_event.event isa ExternalArrivalEvent                                          
                     push!(event_change_times, timed_event.time)
                     push!(event_change_queues_num, sum(state.jobs_num)) 
                 end

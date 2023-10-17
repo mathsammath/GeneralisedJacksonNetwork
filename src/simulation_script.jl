@@ -25,7 +25,7 @@ struct EndSimEvent <: Event end
 # Record when an event happens
 struct LogStateEvent <: Event end 
 
-# Initial external arrival event 
+# External arrival event 
 struct ExternalArrivalEvent <: Event 
     next_q::Int # Queue initial job is assigned to 
 end
