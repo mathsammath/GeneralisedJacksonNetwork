@@ -2,20 +2,22 @@
 Test function for the arrival rate of the simulation.
 """
 function test_two(net::NetworkParameters)
-    cs = [0.1, 0.3, 0.7, 1.0] #multiple 
-    ρ = 0.5 #check if this should be different 
-    sim_Aᵢ = []
-    λᵢ = []
-    max_time = 1000.0 #better way? 
+    cs = [i*0.1 for i in 1:9] # testing multiple cₛ values 
+    ρ, R = 0.5, 0.5 # ρ and R values remain constant
+    sim_A = [] # simulated Aᵢ(T)/T 
+    theoretical_λ = [] # theoretical λᵢs
     for i in cs
-        new_sim = set_scenario(net, ρ, i, 1.0)
-        push!(sim_Aᵢ, [i/max_time for i in sim_net(new_sim, max_time = max_time, warm_up_time = 10)[3]]) #simulate 
-        λ =  (I - new_sim.P') \ new_sim.α_vector #theoretical 
-        push!(λᵢ, λ) #theoretical 
+        # Set new scenario based on params 
+        new_sim = set_scenario(net, ρ, i, R)
+        # Simulate the above and push values into sim_A
+        push!(sim_A, [i/(10^5) for i in sim_net(new_sim, max_time = Float64(10^5), warm_up_time = 10^3)[3]]) 
+        # Compute theoretical value for λ from traffic equations
+        λ =  (I - new_sim.P') \ new_sim.α_vector 
+        push!(theoretical_λ, λ) 
     end 
-    #absolutetly need to change the way this output is presented 
-    for i in 1:4
-        println(sim_Aᵢ[i])
-        println(λᵢ[i])
+    for i in 1:length(cs)
+        println("For cₛ = ", round(i*0.1, digits = 2) ," simulated values for each Aᵢ(T)/T are given by ", sim_A[i])
+        println("And theoretical values for each λᵢ are given by ", theoretical_λ[i])
+        println()
     end
 end 
