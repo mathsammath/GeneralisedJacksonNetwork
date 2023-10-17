@@ -29,13 +29,11 @@ function sim_net(net::NetworkParameters; max_time = Float64(10^6), warm_up_time 
                         log_times::Vector{Float64} = Float64[],
                         callback = (time, state) -> nothing)
 
-        ### Log times where services/arrivals occur 
+        # Log times & queues where services/arrivals occur 
         event_change_times = [] 
-
-        ### Log queues where services/arrivals
         event_change_queues_num = []
 
-        ### Global for repair states 
+        # Global variable for breakdown/repair states 
         global breakdown_states = [false for i in 1:init_state.params.L]
 
         # The event queue
@@ -73,8 +71,8 @@ function sim_net(net::NetworkParameters; max_time = Float64(10^6), warm_up_time 
                 break 
             end
 
-            if timed_event.time > warm_up_time #only record data past warm up time
-                # Need times and lengths of queues at service events 
+            if timed_event.time > warm_up_time # Only record data past warm up time
+                # If event occurs where a queue length is changed then record it
                 if timed_event.event isa EndOfServiceAtQueueEvent || timed_event.event isa ExternalArrivalEvent || 
                                                                             timed_event.event isa ExternalArrivalEventInitial
                     push!(event_change_times, timed_event.time)
@@ -91,12 +89,14 @@ function sim_net(net::NetworkParameters; max_time = Float64(10^6), warm_up_time 
             callback(time, state)
         end
 
+        # Change in time between events where queue length is changed
         delta_log_times = [0; diff(event_change_times)]
 
+        # Return estimated total mean queue length
         return((delta_log_times ⋅ event_change_queues_num) / max_time)
     end;
     
-    #The function would execute the simulation here - and this would use multiple other functions, types, and files
+    # Execute the simulation 
     simulate(QueueNetworkState([0 for i in 1:net.L], net), [TimedEvent(ExternalArrivalEventInitial(i), 0.0) for i in 1:net.L],
     max_time = max_time)
 end;

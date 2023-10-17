@@ -1,5 +1,3 @@
-include("scenarios.jl")
-
 using Plots 
 
 """
@@ -29,7 +27,7 @@ end;
 #Total steady state mean queue lengths as a function of ρ*
 #cₛ = R = 1. Mean steady state queue length is ρᵢ/(1-ρᵢ)
 
-ρ_grid = 0.01:0.01:0.95
+ρ_grid = 0.1:0.01:0.9
 mean_steady_state_queue_size(ρ) = ρ/(1-ρ)
 function steady_state_q_lengths(net::NetworkParameters)
     steady_state_q = [] 
@@ -39,9 +37,9 @@ function steady_state_q_lengths(net::NetworkParameters)
         ρ_arr = λ_arr ./ new_sen.μ_vector 
         append!(steady_state_q, sum(mean_steady_state_queue_size.(ρ_arr)))
     end
-    plot(ρ_grid, steady_state_q, 
-        xlabel = "ρ*", ylabel = "Total steady state mean queue lengths",
-        label = false, lw = 2, c = :black, xlim = (0,1),ylim=(0,20)) 
+    return steady_state_q
 end 
 
-
+plot(ρ_grid, steady_state_q_lengths(scenario1), 
+xlabel = "ρ*", ylabel = "Total steady state mean queue lengths",
+label = false, lw = 2, c = :black, xlim = (0,1),ylim=(0,20)) 
