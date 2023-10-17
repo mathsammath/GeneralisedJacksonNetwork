@@ -136,6 +136,24 @@ function process_event(time::Float64, state::State, ls_event::LogStateEvent)
 end
 
 """
+Process external arrival events that occur initially in the system.
+"""
+function process_event(time::Float64, state::State, ext_event::ExternalArrivalEventInitial) 
+    q = ext_event.q # Queue where job is added 
+    state.jobs_num[q] += 1 # Add job to queue 
+    new_timed_events = TimedEvent[] # Record a new timed event 
+    # Prepare for next arrival
+    push!(new_timed_events, TimedEvent(ExternalArrivalEventInitial(q), 
+                                        time + next_arrival_duration(state, q)))
+    # Start new service event, since this will always be first job in queue 
+    # If this job is only job in queue then start new service event 
+     state.jobs_num[q] == 1 && push!(new_timed_events, TimedEvent(EndOfServiceAtQueueEvent(q, nothing), 
+                                                    time + next_service_duration(state, q)))
+    return new_timed_events
+end 
+
+#=
+"""
 Process an external arrival event.
 """
 function process_event(time::Float64, state::State, arrival_event::ExternalArrivalEvent)
@@ -152,6 +170,7 @@ function process_event(time::Float64, state::State, arrival_event::ExternalArriv
                                             time + next_service_duration(state, q)))
     return new_timed_events
 end
+=#
 
 """
 Process an end of service event.
@@ -209,22 +228,6 @@ function process_event(time::Float64, state::State, rpr_event::RepairEvent)
     breakdown_states[q] = false # Repair broken down server 
     # Prepare for next breakdown event 
     return TimedEvent(BreakdownEvent(q), time + next_breakdown_duration(state, q))
-end 
-
-"""
-Process external arrival events that occur initially in the system.
-"""
-function process_event(time::Float64, state::State, ext_event::ExternalArrivalEventInitial) 
-    q = ext_event.q # Queue where job is added 
-    state.jobs_num[q] += 1 # Add job to queue 
-    new_timed_events = TimedEvent[] # Record a new timed event 
-    # Prepare for next arrival
-    push!(new_timed_events, TimedEvent(ExternalArrivalEvent(nothing), 
-                                        time + next_arrival_duration(state, q)))
-    # Start new service event, since this will always be first job in queue 
-    push!(new_timed_events, TimedEvent(EndOfServiceAtQueueEvent(q, nothing), 
-                                            time + next_service_duration(state, q)))
-    return new_timed_events
 end 
 
 

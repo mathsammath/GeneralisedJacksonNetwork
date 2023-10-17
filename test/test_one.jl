@@ -9,12 +9,14 @@ function test_one(net::NetworkParameters)
         # Set new scenario based on ρ*
         new_net = set_scenario(net, ρ)
         # Simulate for above and record simulated mean queue length
-        push!(mean_lengths, sim_net(new_net, max_time = Float64(10^4), warm_up_time = 10))
+        push!(mean_lengths, sim_net(new_net, max_time = Float64(10^4), warm_up_time = 0)[1])
     end 
+
     abs_err = [] # Absolute error between theoretical and simulated 
     for i in 1:length(ρ_grid)
         push!(abs_err, abs(theoretical_ρ[i] - mean_lengths[i]))
     end 
+
     # Plot simulated mean queue length 
     plt = plot(ρ_grid, mean_lengths, 
         xlabel = "ρ*", ylabel = "Total steady state mean queue lengths",

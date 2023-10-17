@@ -14,7 +14,7 @@ function test_two(net::NetworkParameters)
         push!(λᵢ, λ) #theoretical 
     end 
     #absolutetly need to change the way this output is presented 
-    for i in 1:length(sim_Aᵢ)
+    for i in 1:4
         println(sim_Aᵢ[i])
         println(λᵢ[i])
     end
