@@ -174,7 +174,6 @@ function process_event(time::Float64, state::State, eos_event::EndOfServiceAtQue
         trans_row = push!(state.params.P[q, :], 1 - sum(state.params.P[q, :])) 
         # Sample from above, trans_q denotes queue job moves to (or exits system)
         trans_q = sample(1:state.params.L+1, Weights(trans_row)) 
-
         # If trans_q is in system, proceed by adding job to the queue
         if trans_q < state.params.L+1
             state.jobs_num[trans_q] += 1 # Add job to queue
