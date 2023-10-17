@@ -13,7 +13,7 @@ This simulation does NOT keep individual customers state, it only keeps the foll
 * If each server is on or off.
 * In case the server is off and there is a job "stuck" in it, how much processing time is left on that job. 
 """
-function sim_net(net::NetworkParameters; max_time = Float64(10^6), warm_up_time = 10^4, seed::Int64 = 42)::Float64
+function sim_net(net::NetworkParameters; max_time = Float64(10^6), warm_up_time = 10^4, seed::Int64 = 42)
     
     #Set the random seed
     Random.seed!(seed)
@@ -32,6 +32,9 @@ function sim_net(net::NetworkParameters; max_time = Float64(10^6), warm_up_time 
         # Log times & queues where services/arrivals occur 
         event_change_times = [] 
         event_change_queues_num = []
+
+        # Log time "on" for servers 
+        service_on_times = Array{Float64}(undef, init_state.params.L)
 
         # Global variable for breakdown/repair states 
         global breakdown_states = [false for i in 1:init_state.params.L]
@@ -78,6 +81,13 @@ function sim_net(net::NetworkParameters; max_time = Float64(10^6), warm_up_time 
                     push!(event_change_times, timed_event.time)
                     push!(event_change_queues_num, sum(state.jobs_num)) 
                 end
+
+                # Recording time "on" for servers 
+                if timed_event.event isa BreakdownEvent 
+                    service_on_times[timed_event.q] += timed_event.time
+                elseif timed_event.event isa RepairEvent
+                    service_on_times[timed_event.q] -= timed_event.time 
+                end 
             end
 
             # The event may spawn 0 or more events which we put in the priority queue 
@@ -92,11 +102,14 @@ function sim_net(net::NetworkParameters; max_time = Float64(10^6), warm_up_time 
         # Change in time between events where queue length is changed
         delta_log_times = [0; diff(event_change_times)]
 
+        # Estimate total mean queue length 
+        est_total_mean_q_length = (delta_log_times ⋅ event_change_queues_num) / max_time
+
         # Return estimated total mean queue length
-        return((delta_log_times ⋅ event_change_queues_num) / max_time)
+        return est_total_mean_q_length, service_on_times
     end;
     
     # Execute the simulation 
     simulate(QueueNetworkState([0 for i in 1:net.L], net), [TimedEvent(ExternalArrivalEventInitial(i), 0.0) for i in 1:net.L],
-    max_time = max_time)
+    max_time = max_time, log_times = [0.1])
 end;
