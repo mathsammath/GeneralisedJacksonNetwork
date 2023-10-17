@@ -73,7 +73,7 @@ function sim_net(net::NetworkParameters; max_time = Float64(10^6), warm_up_time 
                 break 
             end
 
-            if timed_event.time > 0 #only record data past warm up time
+            if timed_event.time > warm_up_time #only record data past warm up time
                 # Need times and lengths of queues at service events 
                 if timed_event.event isa EndOfServiceAtQueueEvent || timed_event.event isa ExternalArrivalEvent || 
                                                                             timed_event.event isa ExternalArrivalEventInitial
@@ -91,9 +91,6 @@ function sim_net(net::NetworkParameters; max_time = Float64(10^6), warm_up_time 
             callback(time, state)
         end
 
-        println(event_change_times)
-        println(event_change_queues_num)
-
         delta_log_times = [0; diff(event_change_times)]
 
         return((delta_log_times ⋅ event_change_queues_num) / max_time)
@@ -101,5 +98,5 @@ function sim_net(net::NetworkParameters; max_time = Float64(10^6), warm_up_time 
     
     #The function would execute the simulation here - and this would use multiple other functions, types, and files
     simulate(QueueNetworkState([0 for i in 1:net.L], net), [TimedEvent(ExternalArrivalEventInitial(i), 0.0) for i in 1:net.L],
-    max_time = 10.0)
+    max_time = max_time)
 end;
