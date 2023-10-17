@@ -36,6 +36,9 @@ function sim_net(net::NetworkParameters; max_time = Float64(10^6), warm_up_time 
         # Log time "on" for servers 
         service_on_times = Array{Float64}(undef, init_state.params.L)
 
+        # Log all arrivals to each node 
+        event_arrival_log = [] 
+
         # Global variable for breakdown/repair states 
         global breakdown_states = [false for i in 1:init_state.params.L]
 
@@ -74,6 +77,11 @@ function sim_net(net::NetworkParameters; max_time = Float64(10^6), warm_up_time 
                 break 
             end
 
+            # If event is an arrival or service, add it to log of all arrivals 
+            if timed_event.event isa ExternalArrivalEvent || timed_event.event isa EndOfServiceAtQueueEvent
+                ###
+            end 
+
             if timed_event.time > warm_up_time # Only record data past warm up time
                 # If event occurs where a queue length is changed then record it
                 if timed_event.event isa EndOfServiceAtQueueEvent || timed_event.event isa ExternalArrivalEvent || 
@@ -105,7 +113,7 @@ function sim_net(net::NetworkParameters; max_time = Float64(10^6), warm_up_time 
         # Estimate total mean queue length 
         est_total_mean_q_length = (delta_log_times ⋅ event_change_queues_num) / max_time
 
-        # Return estimated total mean queue length
+        # Return estimated total mean queue length, service on times
         return est_total_mean_q_length, service_on_times
     end;
     

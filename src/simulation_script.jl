@@ -26,7 +26,9 @@ struct EndSimEvent <: Event end
 struct LogStateEvent <: Event end 
 
 # External arrival event 
-struct ExternalArrivalEvent <: Event end 
+mutable struct ExternalArrivalEvent <: Event 
+    next_q::Any # Queue where job moves to after arriving.
+end 
 
 # Initial external arrival event 
 struct ExternalArrivalEventInitial <: Event 
@@ -34,8 +36,9 @@ struct ExternalArrivalEventInitial <: Event
 end
  
 # End of service event 
-struct EndOfServiceAtQueueEvent <: Event
+mutable struct EndOfServiceAtQueueEvent <: Event
     q::Int # Queue where service finished
+    next_q::Any # Queue where job moves after service. nothing if job leaves system.
 end
 
 # Breakdown event 
@@ -137,14 +140,15 @@ Process an external arrival event.
 """
 function process_event(time::Float64, state::State, arrival_event::ExternalArrivalEvent)
     q = rand(1:state.params.L) # Job is assigned to "random" queue
+    arrival_event.next_q = q # Set field
     state.jobs_num[q] += 1 # Add job to queue 
     new_timed_events = TimedEvent[] # Record a new timed event
     # Prepare next arrival
-    push!(new_timed_events, TimedEvent(ExternalArrivalEvent(), 
+    push!(new_timed_events, TimedEvent(ExternalArrivalEvent(nothing), 
                                         time + next_arrival_duration(state, q)))
     # If this job is only job in queue then start new service event 
     state.jobs_num[q] == 1 && push!(new_timed_events, 
-                                        TimedEvent(EndOfServiceAtQueueEvent(q), 
+                                        TimedEvent(EndOfServiceAtQueueEvent(q, nothing), 
                                             time + next_service_duration(state, q)))
     return new_timed_events
 end
@@ -162,7 +166,7 @@ function process_event(time::Float64, state::State, eos_event::EndOfServiceAtQue
         # If another job is in queue then start new service 
         if state.jobs_num[q] ≥ 1
             st = next_service_duration(state, q)
-            push!(new_timed_events, TimedEvent(EndOfServiceAtQueueEvent(q), time + st)) 
+            push!(new_timed_events, TimedEvent(EndOfServiceAtQueueEvent(q, nothing), time + st)) 
         end
 
         # Routing matrix, P, determines where job will go after service
@@ -174,10 +178,11 @@ function process_event(time::Float64, state::State, eos_event::EndOfServiceAtQue
         # If trans_q is in system, proceed by adding job to the queue
         if trans_q < state.params.L+1
             state.jobs_num[trans_q] += 1 # Add job to queue
+            eos_event.next_q = trans_q # Set field
             # If this job is only job in queue then start new service event
             if state.jobs_num[trans_q] == 1
                 # Record this new timed event
-                push!(new_timed_events, TimedEvent(EndOfServiceAtQueueEvent(trans_q), 
+                push!(new_timed_events, TimedEvent(EndOfServiceAtQueueEvent(trans_q, nothing), 
                                             time + next_service_duration(state, trans_q))) 
             end
         end 
@@ -215,10 +220,10 @@ function process_event(time::Float64, state::State, ext_event::ExternalArrivalEv
     state.jobs_num[q] += 1 # Add job to queue 
     new_timed_events = TimedEvent[] # Record a new timed event 
     # Prepare for next arrival
-    push!(new_timed_events, TimedEvent(ExternalArrivalEvent(), 
+    push!(new_timed_events, TimedEvent(ExternalArrivalEvent(nothing), 
                                         time + next_arrival_duration(state, q)))
     # Start new service event, since this will always be first job in queue 
-    push!(new_timed_events, TimedEvent(EndOfServiceAtQueueEvent(q), 
+    push!(new_timed_events, TimedEvent(EndOfServiceAtQueueEvent(q, nothing), 
                                             time + next_service_duration(state, q)))
     return new_timed_events
 end 
