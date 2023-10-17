@@ -94,9 +94,9 @@ function sim_net(net::NetworkParameters; max_time = Float64(10^6), warm_up_time 
 
                 # Recording time "on" for servers 
                 if timed_event.event isa BreakdownEvent 
-                    service_on_times[timed_event.q] += timed_event.time
+                    service_on_times[timed_event.q] -= timed_event.time
                 elseif timed_event.event isa RepairEvent
-                    service_on_times[timed_event.q] -= timed_event.time 
+                    service_on_times[timed_event.q] += timed_event.time 
                 end 
             end
 
