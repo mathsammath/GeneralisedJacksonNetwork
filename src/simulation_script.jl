@@ -26,13 +26,8 @@ struct EndSimEvent <: Event end
 struct LogStateEvent <: Event end 
 
 # External arrival event 
-mutable struct ExternalArrivalEvent <: Event 
-    next_q::Any # Queue where job moves to after arriving.
-end 
-
-# Initial external arrival event 
-struct ExternalArrivalEventInitial <: Event 
-    q::Int # Queue initial job is assigned to 
+struct ExternalArrivalEvent <: Event 
+    next_q::Int # Queue initial job is assigned to 
 end
  
 # End of service event 
@@ -122,7 +117,6 @@ function process_event end
 Process end of simulation event.
 """
 function process_event(time::Float64, state::State, es_event::EndSimEvent)
-    println("Ending simulation at time $time.")
     return []
 end
 
@@ -138,12 +132,12 @@ end
 """
 Process external arrival events that occur initially in the system.
 """
-function process_event(time::Float64, state::State, ext_event::ExternalArrivalEventInitial) 
-    q = ext_event.q # Queue where job is added 
+function process_event(time::Float64, state::State, ext_event::ExternalArrivalEvent) 
+    q = ext_event.next_q # Queue where job is added 
     state.jobs_num[q] += 1 # Add job to queue 
     new_timed_events = TimedEvent[] # Record a new timed event 
     # Prepare for next arrival
-    push!(new_timed_events, TimedEvent(ExternalArrivalEventInitial(q), 
+    push!(new_timed_events, TimedEvent(ExternalArrivalEvent(q), 
                                         time + next_arrival_duration(state, q)))
     # Start new service event, since this will always be first job in queue 
     # If this job is only job in queue then start new service event 

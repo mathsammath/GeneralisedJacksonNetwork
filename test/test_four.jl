@@ -2,13 +2,16 @@
 Qualitative test for relation between R and mean queue lengths 
 """
 function test_four(net::NetworkParameters)
-    R = [1.0, 0.8, 0.5, 0.3, 0.1]
-    ρ = 0.5
-    mean_queue_lengths = []
-    max_time = Float64(10^5)
+    R = [i*0.025 for i in 1:40] # R-values to test
+    cs, ρ = 0.5, 0.5 # cₛ and ρ values to remain constant
+    mean_queue_lengths = []  
     for r in R 
-        new_net = set_scenario(net, ρ, 0.1, r)
-        push!(mean_queue_lengths, sim_net(new_net, max_time = max_time, warm_up_time = 100)[1])
+        new_net = set_scenario(net, ρ, cs, r)
+        push!(mean_queue_lengths, sim_net(new_net, max_time = Float64(10^5), warm_up_time = 10^3)[1])
     end 
-    return mean_queue_lengths
+
+    # Plot simulated mean queue lengths on same plot 
+    plot(R, mean_queue_lengths, 
+        xlabel = "R", ylabel = "Total mean queue lengths",
+        label = "Simulated", lw = 2, c = :grey, xlim = (0,1),ylim=(0,3)) 
 end 
