@@ -117,7 +117,6 @@ function process_event end
 Process end of simulation event.
 """
 function process_event(time::Float64, state::State, es_event::EndSimEvent)
-    println("Ending simulation at time $time.")
     return []
 end
 
