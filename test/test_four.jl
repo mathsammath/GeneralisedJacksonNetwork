@@ -15,5 +15,5 @@ function test_four(net::NetworkParameters)
     # Plot simulated mean queue lengths on same plot 
     plot(R, mean_queue_lengths, 
         xlabel = "R", ylabel = "Total mean queue lengths",
-        label = "Simulated", lw = 2, xlim = (0,1),ylim=(0,3)) 
+        label = "Simulated", lw = 2, xlim = (0,1),ylim=(0,3000)) 
 end 

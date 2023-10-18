@@ -88,7 +88,7 @@ Breakdowns occur independently of jobs in the system and independent of servers.
 Breakdown are exponentially distributed with rate γ₂, which is given as a parameter
 of the network system.
 """
-next_breakdown_duration(s::State, q::Int) = rand(Exponential(1/s.params.γ₂[q]))
+next_breakdown_duration(s::State, q::Int) = rand(Exponential(1/s.params.γ₂))
 
 """
 A function, acting as a RV, for reparis of breakdowns in the system.
@@ -96,7 +96,7 @@ A function, acting as a RV, for reparis of breakdowns in the system.
 Repairs of breakdowns are exponentially distributed with rate γ₁, 
 which is given as a parameter of the network system.
 """
-next_repair_duration(s::State, q::Int) = rand(Exponential(1/s.params.γ₁[q]))
+next_repair_duration(s::State, q::Int) = rand(Exponential(1/s.params.γ₁))
 
 
 ###################################################
@@ -141,30 +141,10 @@ function process_event(time::Float64, state::State, ext_event::ExternalArrivalEv
                                         time + next_arrival_duration(state, q)))
     # Start new service event, since this will always be first job in queue 
     # If this job is only job in queue then start new service event 
-     state.jobs_num[q] == 1 && push!(new_timed_events, TimedEvent(EndOfServiceAtQueueEvent(q, nothing), 
+    state.jobs_num[q] == 1 && push!(new_timed_events, TimedEvent(EndOfServiceAtQueueEvent(q, nothing), 
                                                     time + next_service_duration(state, q)))
     return new_timed_events
 end 
-
-#=
-"""
-Process an external arrival event.
-"""
-function process_event(time::Float64, state::State, arrival_event::ExternalArrivalEvent)
-    q = rand(1:state.params.L) # Job is assigned to "random" queue
-    arrival_event.next_q = q # Set field
-    state.jobs_num[q] += 1 # Add job to queue 
-    new_timed_events = TimedEvent[] # Record a new timed event
-    # Prepare next arrival
-    push!(new_timed_events, TimedEvent(ExternalArrivalEvent(nothing), 
-                                        time + next_arrival_duration(state, q)))
-    # If this job is only job in queue then start new service event 
-    state.jobs_num[q] == 1 && push!(new_timed_events, 
-                                        TimedEvent(EndOfServiceAtQueueEvent(q, nothing), 
-                                            time + next_service_duration(state, q)))
-    return new_timed_events
-end
-=#
 
 """
 Process an end of service event.
@@ -210,7 +190,9 @@ function process_event(time::Float64, state::State, brk_event::BreakdownEvent)
     @assert breakdown_states[q] == false # Ensure server is not already broken down
     breakdown_states[q] = true # Server becomes broken down
     # Prepare for next repair event
-    return TimedEvent(RepairEvent(q), time + next_repair_duration(state, q))
+    new_timed_events = TimedEvent[] # Record a new timed event
+    push!(new_timed_events, TimedEvent(RepairEvent(q), time + next_breakdown_duration(state, q)))
+    return new_timed_events
 end
 
 """
@@ -218,10 +200,11 @@ Process a repair event.
 """
 function process_event(time::Float64, state::State, rpr_event::RepairEvent)
     q = rpr_event.q # Queue where breakdown event occurs 
-    @assert breakdown_states[q] == true # Ensure server is broken down
     breakdown_states[q] = false # Repair broken down server 
     # Prepare for next breakdown event 
-    return TimedEvent(BreakdownEvent(q), time + next_breakdown_duration(state, q))
+    new_timed_events = TimedEvent[] 
+    push!(new_timed_events, TimedEvent(BreakdownEvent(q), time + next_repair_duration(state, q)))
+    return new_timed_events
 end 
 
 

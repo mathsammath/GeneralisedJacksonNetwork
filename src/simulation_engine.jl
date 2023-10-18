@@ -1,4 +1,4 @@
-include("simulation_script.jl")
+include("jackson_network.jl")
 
 """
 Runs a discrete event simulation of an Open Generalized Jackson Network with Breakdowns and Repairs `net`. 
@@ -32,9 +32,9 @@ function sim_net(net::NetworkParameters; max_time = Float64(10^6), warm_up_time 
         # Log times & queues where services/arrivals occur 
         event_change_times = [] 
         event_change_queues_num = []
-
-        # Log time "on" for servers 
-        service_on_times = Array{Float64}(undef, init_state.params.L)
+        
+        #record all breakdown and repair events for each queue 
+        brk_rep_events = [[] for i in 1:net.L]
 
         # Log all arrivals to each node 
         event_arrival_log = ones(init_state.params.L) # Initially one job at each node
@@ -90,40 +90,80 @@ function sim_net(net::NetworkParameters; max_time = Float64(10^6), warm_up_time 
                     push!(event_change_times, timed_event.time)
                     push!(event_change_queues_num, sum(state.jobs_num)) 
                 end
-
-                # Recording time "on" for servers 
-                if timed_event.event isa BreakdownEvent 
-                    service_on_times[timed_event.q] -= timed_event.time
-                elseif timed_event.event isa RepairEvent
-                    service_on_times[timed_event.q] += timed_event.time 
-                end 
             end
+            
+            ##########################
+            #        ON TIMES 
+            ##########################
+            # Add events to list of lists 
+            if timed_event.event isa BreakdownEvent || timed_event.event isa RepairEvent
+                push!(brk_rep_events[timed_event.event.q], timed_event)
+            end 
 
             # The event may spawn 0 or more events which we put in the priority queue 
-            for nte in new_timed_events
-                push!(priority_queue,nte)
-            end
+            if new_timed_events !== nothing 
+                for nte in new_timed_events
+                    push!(priority_queue,nte)
+                end
+            end 
 
             # Callback for each simulation event
             callback(time, state)
         end
 
-        # Change in time between events where queue length is changed
-        delta_log_times = [0; diff(event_change_times)]
+        ################
+        # On time cont.
+        ################
+        # Log time "on" for servers 
+        service_on_times = [[Float64(0)] for i in 1:net.L]
+
+        # For all queues, check if last event is repair. if not, add repair event.
+        for lst_event in brk_rep_events 
+            if !isempty(lst_event) && lst_event[end].event isa BreakdownEvent
+                #if its a breakdown, add a repair event so we can do computation
+                push!(lst_event, TimedEvent(RepairEvent(lst_event[end].event.q), max_time))
+            end 
+        end  
+
+        #now we can compute the difference in times to get the total "on" time 
+        for i in 1:net.L
+            if !isempty(brk_rep_events[i])
+                for j in 1:length(brk_rep_events[i])
+                    if brk_rep_events[i][j].event isa RepairEvent
+                        service_on_times[i][1] += brk_rep_events[i][j].time
+                    elseif brk_rep_events[i][j].event isa BreakdownEvent
+                        service_on_times[i][1] -= brk_rep_events[i][j].time
+                    end 
+                end
+            end 
+        end 
+
+        #final times 
+        times_final = Float64[] 
 
         # Change times to total time on (not off)
-        service_on_times = [max_time - t for t in service_on_times]
+        for t in service_on_times
+            push!(times_final, max_time - t[1])
+        end 
+
+        # Change in time between events where queue length is changed
+        delta_log_times = [0; diff(event_change_times)]
 
         # Estimate total mean queue length 
         est_total_mean_q_length = (delta_log_times ⋅ event_change_queues_num) / max_time
 
         # Return estimated total mean queue length, service on times, arrival log 
-        return est_total_mean_q_length, service_on_times, event_arrival_log
+        return est_total_mean_q_length, times_final, event_arrival_log
     end;
+
+    #INITIAL CONDITIONS 
+    initial_conditions = [TimedEvent(ExternalArrivalEvent(i), 0.0) for i in 1:net.L]
+    for i in 1:net.L
+        push!(initial_conditions, TimedEvent(RepairEvent(i), 0.0))
+    end 
     
     # Execute the simulation 
-    simulate(QueueNetworkState([0 for i in 1:net.L], net), [TimedEvent(ExternalArrivalEvent(i), 0.0) for i in 1:net.L],
-    max_time = max_time)
+    simulate(QueueNetworkState([0 for i in 1:net.L], net), initial_conditions, max_time = max_time)
 end;
 
 
