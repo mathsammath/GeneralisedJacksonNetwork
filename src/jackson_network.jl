@@ -85,18 +85,18 @@ next_service_duration(s::State, q::Int) = rand(rate_scv_gamma(s.params.μ_vector
 A function, acting as a RV, for breakdowns in the system.
 
 Breakdowns occur independently of jobs in the system and independent of servers.
-Breakdown are exponentially distributed with rate γ₁, which is given as a parameter
+Breakdown are exponentially distributed with rate γ₂, which is given as a parameter
 of the network system.
 """
-next_breakdown_duration(s::State, q::Int) = rand(Exponential(1/s.params.γ₁[q]))
+next_breakdown_duration(s::State, q::Int) = rand(Exponential(1/s.params.γ₂[q]))
 
 """
 A function, acting as a RV, for reparis of breakdowns in the system.
 
-Repairs of breakdowns are exponentially distributed with rate γ₂, 
+Repairs of breakdowns are exponentially distributed with rate γ₁, 
 which is given as a parameter of the network system.
 """
-next_repair_duration(s::State, q::Int) = rand(Exponential(1/s.params.γ₂[q]))
+next_repair_duration(s::State, q::Int) = rand(Exponential(1/s.params.γ₁[q]))
 
 
 ###################################################

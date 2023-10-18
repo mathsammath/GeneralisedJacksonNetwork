@@ -10,8 +10,10 @@ function test_four(net::NetworkParameters)
         push!(mean_queue_lengths, sim_net(new_net, max_time = Float64(10^5), warm_up_time = 10^3)[1])
     end 
 
+    println(mean_queue_lengths)
+
     # Plot simulated mean queue lengths on same plot 
     plot(R, mean_queue_lengths, 
         xlabel = "R", ylabel = "Total mean queue lengths",
-        label = "Simulated", lw = 2, c = :grey, xlim = (0,1),ylim=(0,3)) 
+        label = "Simulated", lw = 2, xlim = (0,1),ylim=(0,3)) 
 end 

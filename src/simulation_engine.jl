@@ -111,6 +111,9 @@ function sim_net(net::NetworkParameters; max_time = Float64(10^6), warm_up_time 
         # Change in time between events where queue length is changed
         delta_log_times = [0; diff(event_change_times)]
 
+        # Change times to total time on (not off)
+        service_on_times = [max_time - t for t in service_on_times]
+
         # Estimate total mean queue length 
         est_total_mean_q_length = (delta_log_times ⋅ event_change_queues_num) / max_time
 
