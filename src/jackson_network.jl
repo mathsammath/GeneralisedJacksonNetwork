@@ -166,9 +166,9 @@ function process_event(time::Float64, state::State, eos_event::EndOfServiceAtQue
         # Probability of exiting system included and assigned to "L+1'th" node 
         trans_row = push!(state.params.P[q, :], 1 - sum(state.params.P[q, :])) 
         # Sample from above, trans_q denotes queue job moves to (or exits system)
-        trans_q = sample(1:state.params.L+1, Weights(trans_row)) 
+        trans_q = sample(1:(state.params.L)+1, Weights(trans_row)) 
         # If trans_q is in system, proceed by adding job to the queue
-        if trans_q < state.params.L+1
+        if trans_q < (state.params.L+1)
             state.jobs_num[trans_q] += 1 # Add job to queue
             eos_event.next_q = trans_q # Set field
             # If this job is only job in queue then start new service event
@@ -177,9 +177,14 @@ function process_event(time::Float64, state::State, eos_event::EndOfServiceAtQue
                 push!(new_timed_events, TimedEvent(EndOfServiceAtQueueEvent(trans_q, nothing), 
                                             time + next_service_duration(state, trans_q))) 
             end
-        end 
+        end
         return new_timed_events
-    end 
+    else #we just wait until the queue is repaired
+        new_timed_events = TimedEvent[] # Record a new timed event 
+        push!(new_timed_events, TimedEvent(EndOfServiceAtQueueEvent(q, nothing), 
+                                            time + next_service_duration(state, q)))
+        return new_timed_events
+    end
 end 
 
 """
@@ -187,7 +192,6 @@ Process a breakdown event.
 """
 function process_event(time::Float64, state::State, brk_event::BreakdownEvent)
     q = brk_event.q # Queue where breakdown event occurs
-    @assert breakdown_states[q] == false # Ensure server is not already broken down
     breakdown_states[q] = true # Server becomes broken down
     # Prepare for next repair event
     new_timed_events = TimedEvent[] # Record a new timed event

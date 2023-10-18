@@ -29,18 +29,16 @@ function sim_net(net::NetworkParameters; max_time = Float64(10^6), warm_up_time 
                         log_times::Vector{Float64} = Float64[],
                         callback = (time, state) -> nothing)
 
-        # Log times & queues where services/arrivals occur 
+        # Global variable for breakdown/repair states 
+        global breakdown_states = [false for i in 1:net.L]
+
+        # Times & Queues numbers where events occur 
         event_change_times = [] 
         event_change_queues_num = []
-        
-        #record all breakdown and repair events for each queue 
+        # Breakdown and Repair events. Inner list represents ith server 
         brk_rep_events = [[] for i in 1:net.L]
-
-        # Log all arrivals to each node 
-        event_arrival_log = ones(init_state.params.L) # Initially one job at each node
-
-        # Global variable for breakdown/repair states 
-        global breakdown_states = [false for i in 1:init_state.params.L]
+        # Logging total arrivals at each server. Every server is initialised with one job. 
+        event_arrival_log = ones(init_state.params.L) 
 
         # The event queue
         priority_queue = BinaryMinHeap{TimedEvent}()
@@ -69,9 +67,6 @@ function sim_net(net::NetworkParameters; max_time = Float64(10^6), warm_up_time 
             # Advance the time
             time = timed_event.time
 
-            # Act on the event
-            new_timed_events = process_event(time, state, timed_event.event) 
-
             # If the event was an end of simulation then stop
             if timed_event.event isa EndSimEvent
                 break 
@@ -84,21 +79,25 @@ function sim_net(net::NetworkParameters; max_time = Float64(10^6), warm_up_time 
                 end
             end 
 
-            if timed_event.time > warm_up_time # Only record data past warm up time
+            # Only record data for total mean queue length past warm up time
+            if timed_event.time > warm_up_time 
                 # If event occurs where a queue length is changed then record it
-                if timed_event.event isa EndOfServiceAtQueueEvent || timed_event.event isa ExternalArrivalEvent                                          
+                if timed_event.event isa EndOfServiceAtQueueEvent # Must ensure servers are "on"                                   
+                    breakdown_states[timed_event.event.q] == false && push!(event_change_times, timed_event.time)
+                    breakdown_states[timed_event.event.q] == false && push!(event_change_queues_num, sum(state.jobs_num)) 
+                else 
                     push!(event_change_times, timed_event.time)
                     push!(event_change_queues_num, sum(state.jobs_num)) 
                 end
             end
-            
-            ##########################
-            #        ON TIMES 
-            ##########################
+
             # Add events to list of lists 
             if timed_event.event isa BreakdownEvent || timed_event.event isa RepairEvent
                 push!(brk_rep_events[timed_event.event.q], timed_event)
             end 
+
+            # Act on the event
+            new_timed_events = process_event(time, state, timed_event.event) 
 
             # The event may spawn 0 or more events which we put in the priority queue 
             if new_timed_events !== nothing 
@@ -111,12 +110,9 @@ function sim_net(net::NetworkParameters; max_time = Float64(10^6), warm_up_time 
             callback(time, state)
         end
 
-        ################
-        # On time cont.
-        ################
+        # COMPUTING TOTAL ON TIME FOR SERVERS 
         # Log time "on" for servers 
         service_on_times = [[Float64(0)] for i in 1:net.L]
-
         # For all queues, check if last event is repair. if not, add repair event.
         for lst_event in brk_rep_events 
             if !isempty(lst_event) && lst_event[end].event isa BreakdownEvent
@@ -124,8 +120,7 @@ function sim_net(net::NetworkParameters; max_time = Float64(10^6), warm_up_time 
                 push!(lst_event, TimedEvent(RepairEvent(lst_event[end].event.q), max_time))
             end 
         end  
-
-        #now we can compute the difference in times to get the total "on" time 
+        # Now we can compute the difference in times to get the total "off" time 
         for i in 1:net.L
             if !isempty(brk_rep_events[i])
                 for j in 1:length(brk_rep_events[i])
@@ -137,19 +132,15 @@ function sim_net(net::NetworkParameters; max_time = Float64(10^6), warm_up_time 
                 end
             end 
         end 
-
-        #final times 
+        # Compute total time time servers are "on" 
         times_final = Float64[] 
-
-        # Change times to total time on (not off)
         for t in service_on_times
             push!(times_final, max_time - t[1])
         end 
 
+        # COMPUTING ESTIMATED TOTAL MEAN QUEUE LENGTH 
         # Change in time between events where queue length is changed
         delta_log_times = [0; diff(event_change_times)]
-
-        # Estimate total mean queue length 
         est_total_mean_q_length = (delta_log_times ⋅ event_change_queues_num) / max_time
 
         # Return estimated total mean queue length, service on times, arrival log 
