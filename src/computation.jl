@@ -4,7 +4,7 @@ Compute the maximal value by which we can scale the α_vector and be stable.
 function maximal_alpha_scaling(net::NetworkParameters)
     λ_base = (I - net.P') \ net.α_vector #Solve the traffic equations
     ρ_base = λ_base ./ service_capacity(net) #Determine the load ρ  
-    return minimum(1 ./ ρ_base) #Return the maximal value by 
+    return minimum(1 ./ ρ_base) #Return the maximal value
 end
 
 max_scalings = round.(maximal_alpha_scaling.([scenario1, scenario2, scenario3, scenario4]),digits=3)

@@ -130,7 +130,7 @@ Process external arrival events that occur initially in the system.
 function process_event(time::Float64, state::State, ext_event::ExternalArrivalEvent) 
     q = ext_event.next_q # Queue where job is added 
     state.jobs_num[q] += 1 # Add job to queue 
-    new_timed_events = TimedEvent[] # Record a new timed event 
+    new_timed_events = TimedEvent[] 
     # Prepare for next arrival
     push!(new_timed_events, TimedEvent(ExternalArrivalEvent(q), 
                                         time + next_arrival_duration(state, q)))

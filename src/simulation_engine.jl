@@ -35,7 +35,7 @@ function sim_net(net::NetworkParameters; max_time = Float64(10^6), warm_up_time 
         event_change_queues_num = []
         # Breakdown and Repair events. Inner list represents ith server 
         brk_rep_events = [[] for i in 1:net.L]
-        # Logging total arrivals at each server. Every server is initialised with one job. 
+        # Logging total arrivals at each server, every server is initialised with one job 
         event_arrival_log = ones(init_state.params.L) 
 
         # The event queue

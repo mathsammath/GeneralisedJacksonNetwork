@@ -11,11 +11,11 @@ end
 # Returns the effective service rate vector Rμ (taking breakdowns into consideration)
 service_capacity(net::NetworkParameters) = (net.γ₂/(net.γ₁ + net.γ₂)) * net.μ_vector
 
-##################################
-##################################
+####################
+####################
 # EXAMPLE SCENARIOS 
-##################################
-##################################
+####################
+####################
 
 ############################
 # Three queues in tandem
