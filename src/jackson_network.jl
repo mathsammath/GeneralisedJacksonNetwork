@@ -179,7 +179,7 @@ function process_event(time::Float64, state::State, eos_event::EndOfServiceAtQue
             end
         end
         return new_timed_events
-    else #we just wait until the queue is repaired
+    else #Wait until the queue is repaired
         new_timed_events = TimedEvent[] # Record a new timed event 
         push!(new_timed_events, TimedEvent(EndOfServiceAtQueueEvent(q, nothing), 
                                             time + next_service_duration(state, q)))
