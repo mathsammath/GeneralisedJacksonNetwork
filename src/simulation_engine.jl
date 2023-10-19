@@ -72,7 +72,7 @@ function sim_net(net::NetworkParameters; max_time = Float64(10^6), warm_up_time 
                 break 
             end
 
-            # If event is an arrival or service, add it to log of all arrivals 
+            # If event is an arrival, add it to log of all arrivals 
             if timed_event.event isa ExternalArrivalEvent                 
                 event_arrival_log[timed_event.event.next_q] += 1 
             end
@@ -100,12 +100,8 @@ function sim_net(net::NetworkParameters; max_time = Float64(10^6), warm_up_time 
             # If new_timed_events contains an EndOfServiceAtQueueEvent, we need to add 
             # the queue that this job goes to, to our log of arrivals 
             if timed_event.event isa EndOfServiceAtQueueEvent
-                if new_timed_events !== nothing 
-                    for ntw in new_timed_events
-                        if ntw.event isa EndOfServiceAtQueueEvent
-                            event_arrival_log[ntw.event.q] += 1 
-                        end
-                    end 
+                if length(new_timed_events) > 1 
+                    event_arrival_log[new_timed_events[2].event.q] += 1
                 end    
             end  
 
