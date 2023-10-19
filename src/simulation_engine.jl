@@ -1,5 +1,3 @@
-include("jackson_network.jl")
-
 """
 Runs a discrete event simulation of an Open Generalized Jackson Network with Breakdowns and Repairs `net`. 
 

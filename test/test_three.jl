@@ -1,5 +1,3 @@
-using DataFrames 
-
 """
 A test to investigate the long term proportion of time "on" for each server 
 with various set values of R.

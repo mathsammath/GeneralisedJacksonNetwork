@@ -1,5 +1,3 @@
-using Plots 
-
 """
 Compute the maximal value by which we can scale the α_vector and be stable.
 """
@@ -40,6 +38,8 @@ function steady_state_q_lengths(net::NetworkParameters)
     return steady_state_q
 end 
 
+#=
 plot(ρ_grid, steady_state_q_lengths(scenario1), 
 xlabel = "ρ*", ylabel = "Total steady state mean queue lengths",
 label = false, lw = 2, c = :black, xlim = (0,1),ylim=(0,20)) 
+=#
