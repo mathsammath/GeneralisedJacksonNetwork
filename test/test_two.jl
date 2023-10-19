@@ -18,5 +18,5 @@ function test_two(net::NetworkParameters)
         push!(theoretical_λ, λ) 
     end 
     df = DataFrame(Simulated  = sim_A, theoretical_λ = theoretical_λ)
-    print(df)
+    println(df)
 end 
