@@ -30,5 +30,5 @@ function test_one(net::NetworkParameters)
         xlabel = "ρ*", ylabel = "Absolute Error",
         label = "Simulated", lw = 2, xlim = (0,1), ylim=(0,2)) 
         
-    plot(plt1, plt2, size = (1000,600))
+    plot(plt1, plt2)
 end 
