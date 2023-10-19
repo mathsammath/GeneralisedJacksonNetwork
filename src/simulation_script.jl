@@ -22,6 +22,7 @@ println()
 
 println("Running the simulation for scenario1 we have")
 println(sim_net(scenario1))
+println()
 
 println("The simulation can handle servers breaking down. We can change the parameters")
 println("of scenario1 to have breakdowns.")

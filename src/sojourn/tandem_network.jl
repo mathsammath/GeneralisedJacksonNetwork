@@ -1,5 +1,3 @@
-include("network_parameters.jl")
-
 using DataStructures, Random, Distributions, StatsBase
 import Base: isless
 
@@ -53,7 +51,7 @@ end
 ###################################################
  
 mutable struct QueueNetworkState <: State 
-    jobs_num::Vector{Int} # Number of jobs in each queue, ordered. 
+    jobs_num::Vector{Vector{Int}} # Jobs in each queue. 
     params::NetworkParameters # Parameters of queue network system
 end 
 
@@ -134,14 +132,19 @@ Process external arrival events that occur initially in the system.
 """
 function process_event(time::Float64, state::State, ext_event::ExternalArrivalEvent) 
     q = ext_event.next_q # Queue where job is added 
-    state.jobs_num[q] += 1 # Add job to queue 
+
+    new_job += 1 #there is a new job in the system
+    total_jobs += 1
+    dict_jobs[total_jobs] = true #add job to jobs dictionary for system
+    push!(state.jobs_num[q], new_job) # Add job to queue 
+
     new_timed_events = TimedEvent[] # Record a new timed event 
     # Prepare for next arrival
     push!(new_timed_events, TimedEvent(ExternalArrivalEvent(q), 
                                         time + next_arrival_duration(state, q)))
     # Start new service event, since this will always be first job in queue 
     # If this job is only job in queue then start new service event 
-    state.jobs_num[q] == 1 && push!(new_timed_events, TimedEvent(EndOfServiceAtQueueEvent(q, nothing), 
+    lenght(state.jobs_num[q]) == 1 && push!(new_timed_events, TimedEvent(EndOfServiceAtQueueEvent(q, nothing), 
                                                     time + next_service_duration(state, q)))
     return new_timed_events
 end 
@@ -152,12 +155,12 @@ Process an end of service event.
 function process_event(time::Float64, state::State, eos_event::EndOfServiceAtQueueEvent)
     q = eos_event.q # Queue where service has occured
     if breakdown_states[q] == false # Proceed only if server is not broken down
-        state.jobs_num[q] -= 1 # Remove this job from the queue 
+        removed = popfirst!(state.jobs_num[q]) # Remove this job from the queue 
         @assert state.jobs_num[q] ≥ 0 
         new_timed_events = TimedEvent[] # Record a new timed event 
 
         # If another job is in queue then start new service 
-        if state.jobs_num[q] ≥ 1
+        if length(state.jobs_num[q]) ≥ 1
             st = next_service_duration(state, q)
             push!(new_timed_events, TimedEvent(EndOfServiceAtQueueEvent(q, nothing), time + st)) 
         end
@@ -166,20 +169,28 @@ function process_event(time::Float64, state::State, eos_event::EndOfServiceAtQue
         # Probability of exiting system included and assigned to "L+1'th" node 
         trans_row = push!(state.params.P[q, :], 1 - sum(state.params.P[q, :])) 
         # Sample from above, trans_q denotes queue job moves to (or exits system)
-        trans_q = sample(1:state.params.L+1, Weights(trans_row)) 
+        trans_q = sample(1:(state.params.L)+1, Weights(trans_row)) 
         # If trans_q is in system, proceed by adding job to the queue
-        if trans_q < state.params.L+1
-            state.jobs_num[trans_q] += 1 # Add job to queue
+        if trans_q < (state.params.L+1)
+            push!(state.jobs_num[trans_q], removed) #add job to end of new queue 
             eos_event.next_q = trans_q # Set field
             # If this job is only job in queue then start new service event
-            if state.jobs_num[trans_q] == 1
+            if length(state.jobs_num[trans_q]) == 1
                 # Record this new timed event
                 push!(new_timed_events, TimedEvent(EndOfServiceAtQueueEvent(trans_q, nothing), 
                                             time + next_service_duration(state, trans_q))) 
             end
-        end 
+        else #job leaves the system
+            dict_jobs[removed] = false  
+            total_jobs -= 1
+        end
         return new_timed_events
-    end 
+    else #Wait until the queue is repaired
+        new_timed_events = TimedEvent[] # Record a new timed event 
+        push!(new_timed_events, TimedEvent(EndOfServiceAtQueueEvent(q, nothing), 
+                                            time + next_service_duration(state, q)))
+        return new_timed_events
+    end
 end 
 
 """
@@ -187,7 +198,6 @@ Process a breakdown event.
 """
 function process_event(time::Float64, state::State, brk_event::BreakdownEvent)
     q = brk_event.q # Queue where breakdown event occurs
-    @assert breakdown_states[q] == false # Ensure server is not already broken down
     breakdown_states[q] = true # Server becomes broken down
     # Prepare for next repair event
     new_timed_events = TimedEvent[] # Record a new timed event
