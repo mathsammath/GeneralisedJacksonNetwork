@@ -100,9 +100,9 @@ function sim_net(net::NetworkParameters; max_time = Float64(10^6), warm_up_time 
             # If new_timed_events contains an EndOfServiceAtQueueEvent, we need to add 
             # the queue that this job goes to, to our log of arrivals 
             if timed_event.event isa EndOfServiceAtQueueEvent
-                if length(new_timed_events) > 1 
-                    event_arrival_log[new_timed_events[2].event.q] += 1
-                end    
+                if timed_event.event.next_q !== nothing 
+                    event_arrival_log[timed_event.event.next_q] += 1
+                end
             end  
 
             # The event may spawn 0 or more events which we put in the priority queue 
