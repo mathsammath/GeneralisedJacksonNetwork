@@ -19,4 +19,19 @@ function test_two(net::NetworkParameters)
     end 
     df = DataFrame(Simulated  = sim_A, theoretical_λ = theoretical_λ)
     println(df)
+    println()
+
+    #Repeat, but now for different cs values to show it remains constant
+    cs = [i*0.2 for i in 1:4] # testing multiple cₛ values 
+    ρ, R = 0.5, 0.5 # ρ and R values remain constant
+    sim_A = [] # simulated Aᵢ(T)/T 
+    theoretical_λ = [] # theoretical λᵢs
+    for i in cs
+        # Set new scenario based on params 
+        new_sim = set_scenario(net, ρ, i, R)
+        # Simulate the above and push values into sim_A
+        push!(sim_A, [j/(10^5) for j in sim_net(new_sim, max_time = Float64(10^5), warm_up_time = 10^3)[3]]) 
+    end 
+    df1 = DataFrame(cs  = cs, Simulated  = sim_A)
+    println(df1)
 end 
