@@ -73,11 +73,9 @@ function sim_net(net::NetworkParameters; max_time = Float64(10^6), warm_up_time 
             end
 
             # If event is an arrival or service, add it to log of all arrivals 
-            if timed_event.event isa ExternalArrivalEvent || timed_event.event isa EndOfServiceAtQueueEvent
-                if timed_event.event.next_q !== nothing 
-                    event_arrival_log[timed_event.event.next_q] += 1 
-                end
-            end 
+            if timed_event.event isa ExternalArrivalEvent                 
+                event_arrival_log[timed_event.event.next_q] += 1 
+            end
 
             # Only record data for total mean queue length past warm up time
             if timed_event.time > warm_up_time 
@@ -98,6 +96,18 @@ function sim_net(net::NetworkParameters; max_time = Float64(10^6), warm_up_time 
 
             # Act on the event
             new_timed_events = process_event(time, state, timed_event.event) 
+
+            # If new_timed_events contains an EndOfServiceAtQueueEvent, we need to add 
+            # the queue that this job goes to, to our log of arrivals 
+            if timed_event.event isa EndOfServiceAtQueueEvent
+                if new_timed_events !== nothing 
+                    for ntw in new_timed_events
+                        if ntw.event isa EndOfServiceAtQueueEvent
+                            event_arrival_log[ntw.event.q] += 1 
+                        end
+                    end 
+                end    
+            end  
 
             # The event may spawn 0 or more events which we put in the priority queue 
             if new_timed_events !== nothing 
