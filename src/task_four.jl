@@ -1,9 +1,9 @@
 function task_four(scenario::NetworkParameters, scenario_num; reps::Int64=2, max_time::Float64= Float64(5*10^4), warm_up_time::Int64=10^3)
     c_s_values = [0.1, 0.5, 1.0, 2.0, 4.0]
-    #Scenario_num == 4 ? (ρ_grid = 0.1:0.1:0.9) : (ρ_grid = 0.1:0.01:0.9)
+    #scenario_num == 4 ? (ρ_grid = 0.1:0.1:0.9) : (ρ_grid = 0.1:0.01:0.9)
     ρ_grid = 0.1:0.1:0.9
     
-    #Consider only for scenario 1 for fixed R and varying c_s
+    #consider only for scenario 1 for fixed R and varying c_s
     R = 0.75
     test_scenarios_c_s = [[set_scenario(scenario, ρ, c_s, R) for ρ in ρ_grid] for c_s in c_s_values]
 

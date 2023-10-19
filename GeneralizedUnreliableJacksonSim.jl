@@ -8,7 +8,6 @@
 
 using Parameters, Accessors, LinearAlgebra, Random, DataStructures, Random, Distributions, StatsBase, DataFrames
 using Plots  
-import Base: isless
 
 include("src/network_parameters.jl")
 include("src/computation.jl")
