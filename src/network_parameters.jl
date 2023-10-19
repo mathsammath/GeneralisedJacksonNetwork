@@ -1,8 +1,3 @@
-using Parameters  
-using Accessors 
-using LinearAlgebra
-using Random 
-
 @with_kw struct NetworkParameters #The @with_kw macro comes from the Parameters.jl package and makes nice constructors
     L::Int
     α_vector::Vector{Float64} #This vector is a vector of α_i which can then be scaled

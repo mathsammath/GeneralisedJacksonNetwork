@@ -1,5 +1,3 @@
-using Plots 
-
 """
 Compute the maximal value by which we can scale the α_vector and be stable.
 """
